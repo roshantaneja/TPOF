@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>TPOF Knot Encoder</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <div class="brand">
+        <h1>TPOF Knot Encoder</h1>
+        <p class="tagline">Plaintext → friendship-bracelet knot codes for the Letibus Jam puzzles</p>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Tool">
+        <button type="button" role="tab" id="tab-encode" aria-controls="panel-encode" aria-selected="true">Encode</button>
+        <button type="button" role="tab" id="tab-decode" aria-controls="panel-decode" aria-selected="false" tabindex="-1">Decode / check</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+    <div id="load-error" class="banner banner-error" role="alert" hidden></div>
+
+    <!-- ============================================================ ENCODE -->
+    <section id="panel-encode" role="tabpanel" aria-labelledby="tab-encode" class="tabpanel">
+      <div class="layout">
+        <div class="col-input">
+          <section class="card" aria-labelledby="setup-h">
+            <h2 id="setup-h">Setup</h2>
+            <div class="field">
+              <label for="preset">Puzzle preset</label>
+              <select id="preset"></select>
+              <p id="preset-desc" class="hint"></p>
+            </div>
+
+            <fieldset class="field segmented" id="enc-mode-group">
+              <legend>Knot mode</legend>
+              <div class="seg-options" id="enc-mode"></div>
+              <p id="enc-mode-desc" class="hint"></p>
+            </fieldset>
+
+            <fieldset class="field flags" id="enc-flags" hidden>
+              <legend>Dual options</legend>
+              <label class="check"><input type="checkbox" id="enc-crossKeys"> Cross keys <span class="hint-inline">(RL text uses the Swap key and vice-versa)</span></label>
+              <label class="check"><input type="checkbox" id="enc-linked"> Linked shift list <span class="hint-inline">(RL = number list, Swap = plaintext shifted by it)</span></label>
+              <label class="check" id="enc-asLetters-wrap"><input type="checkbox" id="enc-asLetters"> Write the number list as letters (a=0 …) and Vigenère it</label>
+              <div class="field" id="enc-numbers-wrap">
+                <label for="enc-numbers">Number list</label>
+                <input type="text" id="enc-numbers" inputmode="text" autocomplete="off" spellcheck="false" placeholder="1 2 3 4 5 ...">
+                <p class="hint">Space or comma separated. A trailing <code>...</code> continues the pattern to the plaintext length.</p>
+              </div>
+            </fieldset>
+          </section>
+
+          <div id="enc-layers" class="layers"></div>
+        </div>
+
+        <div class="col-output">
+          <section class="card output-card" aria-labelledby="out-h">
+            <div class="card-head">
+              <h2 id="out-h">Knot string</h2>
+              <button type="button" id="copy-btn" class="btn btn-primary">Copy</button>
+            </div>
+            <pre id="knot-string" class="knot-string" tabindex="0" aria-label="Knot string"></pre>
+            <p id="copy-status" class="sr-status" role="status" aria-live="polite"></p>
+            <div class="format-row">
+              <div class="field inline">
+                <label for="fmt-row">Row separator</label>
+                <select id="fmt-row">
+                  <option value="space">space</option>
+                  <option value="newline">newline</option>
+                </select>
+              </div>
+              <div class="field inline">
+                <label for="fmt-knot">Knot separator</label>
+                <select id="fmt-knot">
+                  <option value="comma">comma (a,b)</option>
+                  <option value="comma-space">comma + space (a, b)</option>
+                </select>
+              </div>
+              <button type="button" id="to-decode" class="btn">Check in decoder →</button>
+            </div>
+            <dl id="stats" class="stats"></dl>
+            <ul id="warnings" class="warnings" aria-live="polite"></ul>
+          </section>
+
+          <section class="card" id="cipher-card" aria-labelledby="cipher-h" hidden>
+            <h2 id="cipher-h">Cipher text</h2>
+            <div id="cipher-out"></div>
+          </section>
+
+          <section class="card" aria-labelledby="grid-h">
+            <div class="card-head">
+              <h2 id="grid-h">Bracelet</h2>
+              <label class="check"><input type="checkbox" id="sim-toggle"> Simulate threads</label>
+            </div>
+            <div id="sim-controls" class="sim-controls" hidden>
+              <div class="field inline">
+                <label for="sim-left">Left thread</label>
+                <input type="color" id="sim-left" value="#1d3557">
+              </div>
+              <div class="field inline">
+                <label for="sim-right">Right thread</label>
+                <input type="color" id="sim-right" value="#f4a261">
+              </div>
+              <p class="hint">Each cell shows the thread colour that knot displays; the thread state carries across rows.</p>
+            </div>
+            <div id="legend" class="legend" aria-hidden="true"></div>
+            <div class="grid-scroll" tabindex="0" aria-label="Bracelet grid, scrollable">
+              <div id="bracelet" class="bracelet"></div>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="rows-h">
+            <h2 id="rows-h">Bit rows</h2>
+            <div class="table-scroll" tabindex="0" aria-label="Bit rows table, scrollable">
+              <table id="rows-table" class="rows-table"></table>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ DECODE -->
+    <section id="panel-decode" role="tabpanel" aria-labelledby="tab-decode" class="tabpanel" hidden>
+      <div class="layout">
+        <div class="col-input">
+          <section class="card" aria-labelledby="dec-h">
+            <h2 id="dec-h">Knot string to check</h2>
+            <div class="field">
+              <label for="dec-input">Knots <span class="hint-inline">(rows separated by spaces or newlines, knots by commas)</span></label>
+              <textarea id="dec-input" rows="5" spellcheck="false" autocomplete="off" placeholder="BX,FX,FX,FX,FX,FX,FX,FX,FX,FX BX,BX,FX,FX,FX,FX,FX,FX,FX,FX"></textarea>
+            </div>
+            <fieldset class="field segmented">
+              <legend>Knot mode</legend>
+              <div class="seg-options" id="dec-mode"></div>
+            </fieldset>
+            <fieldset class="field flags" id="dec-flags" hidden>
+              <legend>Dual options</legend>
+              <label class="check"><input type="checkbox" id="dec-crossKeys"> Cross keys (Wrong Key)</label>
+              <label class="check"><input type="checkbox" id="dec-linked"> Linked shift list (RL numbers shift the Swap text)</label>
+              <label class="check" id="dec-asLetters-wrap"><input type="checkbox" id="dec-asLetters"> RL numbers written as letters (a=0 …)</label>
+            </fieldset>
+          </section>
+          <div id="dec-layers" class="layers"></div>
+        </div>
+
+        <div class="col-output">
+          <section class="card output-card" aria-labelledby="dec-out-h">
+            <h2 id="dec-out-h">Recovered text</h2>
+            <div id="dec-text" class="dec-text" aria-live="polite"></div>
+            <dl id="dec-stats" class="stats"></dl>
+            <ul id="dec-warnings" class="warnings" aria-live="polite"></ul>
+          </section>
+          <section class="card" aria-labelledby="dec-rows-h">
+            <h2 id="dec-rows-h">Recovered bits</h2>
+            <div class="table-scroll" tabindex="0" aria-label="Recovered bits table, scrollable">
+              <table id="dec-rows" class="rows-table"></table>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap site-footer">
+    <p>Knots: <b>F</b> forward · <b>B</b> backward · <b>FX</b> forward swap · <b>BX</b> backward swap. Works offline; nothing leaves this page.</p>
+  </footer>
+
+  <script src="js/ciphers.js"></script>
+  <script src="js/knots.js"></script>
+  <script src="js/pipeline.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -124,4 +124,4 @@ stats(knots) -> { rows, knots, counts: {F,B,FX,BX} }
 Composes ciphers + knots, holds the puzzle presets.
 
 ### Tests
-`node --test tests/` — `tests/ciphers.test.js`, `tests/knots.test.js`, `tests/pipeline.test.js`.
+`node --test` (or `node --test tests/*.test.js`) — `tests/ciphers.test.js`, `tests/knots.test.js`, `tests/pipeline.test.js`.
